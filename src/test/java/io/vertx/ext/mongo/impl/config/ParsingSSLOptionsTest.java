@@ -2,7 +2,10 @@ package io.vertx.ext.mongo.impl.config;
 
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.connection.SslSettings;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -14,6 +17,17 @@ import java.io.IOException;
 import static org.junit.Assert.*;
 
 public class ParsingSSLOptionsTest {
+  private Vertx vertx;
+
+  @Before
+  public void setUp() {
+    vertx = Vertx.vertx();
+  }
+
+  @After
+  public void tearDown() {
+    vertx.close();
+  }
 
   @Rule
   public TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -26,7 +40,7 @@ public class ParsingSSLOptionsTest {
     );
 
     // when
-    final MongoClientSettings parsedSettings = new MongoClientOptionsParser(configWithoutSSLInfo).settings();
+    final MongoClientSettings parsedSettings = new MongoClientOptionsParser(vertx, configWithoutSSLInfo).settings();
 
     // then
     assertFalse(parsedSettings.getSslSettings().isEnabled());
@@ -41,7 +55,7 @@ public class ParsingSSLOptionsTest {
     );
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLEnabled).settings().getSslSettings();
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLEnabled).settings().getSslSettings();
 
     // then
     assertTrue(sslSettings.isEnabled());
@@ -53,7 +67,7 @@ public class ParsingSSLOptionsTest {
     final JsonObject withSSLEnabled = new JsonObject().put("ssl", true);
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLEnabled).settings().getSslSettings();
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLEnabled).settings().getSslSettings();
 
     // then
     assertTrue(sslSettings.isEnabled());
@@ -67,7 +81,7 @@ public class ParsingSSLOptionsTest {
     );
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLAndInvalidHostnameEnabled)
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLAndInvalidHostnameEnabled)
       .settings()
       .getSslSettings();
 
@@ -83,7 +97,7 @@ public class ParsingSSLOptionsTest {
       .put("sslInvalidHostNameAllowed", true);
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLAndInvalidHostnameEnabled)
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLAndInvalidHostnameEnabled)
       .settings()
       .getSslSettings();
 
@@ -99,7 +113,7 @@ public class ParsingSSLOptionsTest {
       .put("trustAll", true);
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLAndTrustAllEnabled)
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLAndTrustAllEnabled)
       .settings()
       .getSslSettings();
 
@@ -115,7 +129,7 @@ public class ParsingSSLOptionsTest {
       .put("caPath", "notExisting.pem");
 
     // then
-    new MongoClientOptionsParser(withSSLAndCaPath);
+    new MongoClientOptionsParser(vertx, withSSLAndCaPath);
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -127,7 +141,7 @@ public class ParsingSSLOptionsTest {
       .put("caPath", tmpFile.getAbsolutePath());
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLAndCaPath)
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLAndCaPath)
       .settings()
       .getSslSettings();
 
@@ -162,7 +176,7 @@ public class ParsingSSLOptionsTest {
       .put("caPath", tmpFile.getAbsolutePath());
 
     // when
-    final SslSettings sslSettings = new MongoClientOptionsParser(withSSLAndCaPath)
+    final SslSettings sslSettings = new MongoClientOptionsParser(vertx, withSSLAndCaPath)
       .settings()
       .getSslSettings();
 
@@ -184,6 +198,6 @@ public class ParsingSSLOptionsTest {
       .put("caPath", tmpFile.getAbsolutePath());
 
     // then
-    new MongoClientOptionsParser(withSSLAndCaPath);
+    new MongoClientOptionsParser(vertx, withSSLAndCaPath);
   }
 }

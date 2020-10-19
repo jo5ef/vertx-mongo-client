@@ -42,11 +42,7 @@ import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import io.vertx.codegen.annotations.Nullable;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -89,7 +85,7 @@ import static java.util.Objects.*;
  *
  * @author <a href="http://tfox.org">Tim Fox</a>
  */
-public class MongoClientImpl implements io.vertx.ext.mongo.MongoClient {
+public class MongoClientImpl implements io.vertx.ext.mongo.MongoClient, Closeable {
 
   private static final Logger log = LoggerFactory.getLogger(MongoClientImpl.class);
 
@@ -112,8 +108,10 @@ public class MongoClientImpl implements io.vertx.ext.mongo.MongoClient {
     Objects.requireNonNull(config);
     Objects.requireNonNull(dataSourceName);
     this.vertx = vertx;
+    Context context = vertx.getOrCreateContext();
+    context.addCloseHook(this);
     this.holder = lookupHolder(dataSourceName, config);
-    this.mongo = holder.mongo();
+    this.mongo = holder.mongo(vertx);
     this.useObjectId = config.getBoolean("useObjectId", false);
   }
 
@@ -948,6 +946,12 @@ public class MongoClientImpl implements io.vertx.ext.mongo.MongoClient {
     return jsonUpsertId;
   }
 
+  @Override
+  public void close(Handler<AsyncResult<Void>> handler) {
+    holder.close();
+    handler.handle(Future.succeededFuture());
+  }
+
   private static class MongoHolder implements Shareable {
     com.mongodb.async.client.MongoClient mongo;
     MongoDatabase db;
@@ -960,9 +964,9 @@ public class MongoClientImpl implements io.vertx.ext.mongo.MongoClient {
       this.closeRunner = closeRunner;
     }
 
-    synchronized com.mongodb.async.client.MongoClient mongo() {
+    synchronized com.mongodb.async.client.MongoClient mongo(final Vertx vertx) {
       if (mongo == null) {
-        MongoClientOptionsParser parser = new MongoClientOptionsParser(config);
+        MongoClientOptionsParser parser = new MongoClientOptionsParser(vertx, config);
         mongo = MongoClients.create(parser.settings());
         db = mongo.getDatabase(parser.database());
       }

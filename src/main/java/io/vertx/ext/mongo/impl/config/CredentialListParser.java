@@ -7,7 +7,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.impl.MongoClientImpl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static com.mongodb.AuthenticationMechanism.*;
@@ -28,23 +27,24 @@ class CredentialListParser {
       credentials = connStringCredentials;
     } else {
       String username = config.getString("username");
+      // AuthMechanism
+      AuthenticationMechanism mechanism = null;
+      String authMechanism = config.getString("authMechanism");
+      if (authMechanism != null) {
+        mechanism = getAuthenticationMechanism(authMechanism);
+      }
+      credentials = new ArrayList<>();
       if (username == null) {
-        credentials = Collections.emptyList();
+        if (mechanism == MONGODB_X509) {
+          credentials.add(MongoCredential.createMongoX509Credential());
+        }
       } else {
-        credentials = new ArrayList<>();
         String passwd = config.getString("password");
         char[] password = (passwd == null) ? null : passwd.toCharArray();
         // See https://github.com/vert-x3/vertx-mongo-client/issues/46 - 'admin' as default is a security
         // concern, use  the 'db_name' if none is set.
         String authSource = config.getString("authSource",
-            config.getString("db_name", MongoClientImpl.DEFAULT_DB_NAME));
-
-        // AuthMechanism
-        AuthenticationMechanism mechanism = null;
-        String authMechanism = config.getString("authMechanism");
-        if (authMechanism != null) {
-          mechanism = getAuthenticationMechanism(authMechanism);
-        }
+          config.getString("db_name", MongoClientImpl.DEFAULT_DB_NAME));
 
         // MongoCredential
         String gssapiServiceName = config.getString("gssapiServiceName");
